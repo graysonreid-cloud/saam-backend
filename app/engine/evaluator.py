@@ -5,9 +5,12 @@ from app.engine.reasoner import build_reasoning_trace
 from app.engine.teams_formatter import build_teams_message
 from app.saam_logger.logger import log_intervention
 
-
 def evaluate_team_state(state):
-    state = state.dict()
+
+    # FIX: Only convert to dict if it's a Pydantic model
+    if hasattr(state, "dict"):
+        state = state.dict()
+
     candidates = apply_rules(state)
     best = choose_best_intervention(candidates)
 
@@ -15,7 +18,6 @@ def evaluate_team_state(state):
     if jira_data and "error" not in jira_data:
         state["jira_summary"] = jira_data.get("fields", {}).get("summary")
         state["jira_status"] = jira_data.get("fields", {}).get("status", {}).get("name")
-
 
     reasoning = build_reasoning_trace(candidates, best)
     best["reasoning_trace"] = reasoning
@@ -26,7 +28,3 @@ def evaluate_team_state(state):
     log_intervention(best, raw_json)
 
     return best
-
-
-
-
