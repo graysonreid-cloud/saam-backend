@@ -7,8 +7,15 @@ from app.saam_logger.logger import log_intervention
 
 
 def evaluate_team_state(state):
+    state = state.dict()
     candidates = apply_rules(state)
     best = choose_best_intervention(candidates)
+
+    jira_data = state.get("jira")
+    if jira_data and "error" not in jira_data:
+        state["jira_summary"] = jira_data.get("fields", {}).get("summary")
+        state["jira_status"] = jira_data.get("fields", {}).get("status", {}).get("name")
+
 
     reasoning = build_reasoning_trace(candidates, best)
     best["reasoning_trace"] = reasoning
@@ -19,4 +26,7 @@ def evaluate_team_state(state):
     log_intervention(best, raw_json)
 
     return best
+
+
+
 
