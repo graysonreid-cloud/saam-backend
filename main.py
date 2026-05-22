@@ -1,10 +1,27 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from dotenv import load_dotenv
 from pydantic import BaseModel
-from app.engine.evaluator import evaluate_team_state
-from app.integrations.jira_client import fetch_jira_issue
 
+# Load environment variables 
+load_dotenv()
+
+# FastAPI app
 app = FastAPI(title="SAAM Backend")
 
+# -----------------------------
+# Routers & Integrations
+# -----------------------------
+from app.test_endpoints.jira_test import router as jira_test_router
+from app.integrations.jira_client import fetch_jira_issue
+from app.integrations.jira.mapping import map_jira_to_saam
+from app.engine.evaluator import evaluate_team_state
+
+# Register test router
+app.include_router(jira_test_router, prefix="/test")
+
+# -----------------------------
+# Models
+# -----------------------------
 class TeamState(BaseModel):
     participation: float
     talk_time_imbalance: float
@@ -13,14 +30,23 @@ class TeamState(BaseModel):
     ceremony: str
     time_remaining: int
 
+# -----------------------------
+# Health Check
+# -----------------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+# -----------------------------
+# Manual Evaluation Endpoint
+# -----------------------------
 @app.post("/evaluate")
 def evaluate(state: TeamState):
     return evaluate_team_state(state)
 
+# -----------------------------
+# Evaluate with Jira (manual fetch)
+# -----------------------------
 @app.post("/evaluate_with_jira")
 def evaluate_with_jira(payload: dict):
     issue_key = payload.get("issue_key")
@@ -35,8 +61,37 @@ def evaluate_with_jira(payload: dict):
             api_token=jira_config.get("api_token")
         )
 
-    # Pass Jira data into SAAM state
     state = payload.get("state", {})
     state["jira"] = jira_data
 
     return evaluate_team_state(state)
+
+# -----------------------------
+# Jira Webhook Endpoint (REAL-TIME)
+# -----------------------------
+@app.post("/webhooks/jira")
+async def jira_webhook(payload: dict):
+    print("Webhook payload received:", payload)
+
+    issue = payload.get("issue")
+    if not issue:
+        return {"error": "Missing issue"}
+
+    try:
+        saam_state = map_jira_to_saam(issue)
+        print("Mapped SAAM state:", saam_state)
+
+        decision = evaluate_team_state(saam_state)
+        print("SAAM decision:", decision)
+
+        return {
+            "status": "ok",
+            "saam_state": saam_state,
+            "decision": decision
+        }
+
+    except Exception as e:
+        print("WEBHOOK ERROR:", e)
+        return {"error": str(e)}
+
+
