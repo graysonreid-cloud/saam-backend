@@ -5,7 +5,6 @@ def choose_best_intervention(candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         return {
             "rule_name": "no_issue",
             "rule_category": "none",
-            "rule_version": "1.0",
             "rationale": "No rules fired; team state appears healthy.",
             "cue": "no_issue",
             "message": "No intervention needed.",
@@ -42,7 +41,6 @@ def choose_best_intervention(candidates: List[Dict[str, Any]]) -> Dict[str, Any]
     return {
         "rule_name": "multi_cue_composite",
         "rule_category": "combined_signals",
-        "rule_version": "1.0",
         "rationale": "When several high-priority cues fire together, SAAM surfaces a composite intervention.",
         "cue": "multi_cue",
         "message": combined_message,

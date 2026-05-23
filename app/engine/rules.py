@@ -19,7 +19,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "participation_critical_threshold",
             "rule_category": "participation",
-            "rule_version": "1.0",
             "rationale": "Critical participation levels indicate disengagement and psychological safety risks.",
             "cue": "critical_low_participation",
             "message": "Participation is critically low — the team may be disengaged.",
@@ -31,7 +30,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "participation_low_threshold",
             "rule_category": "participation",
-            "rule_version": "1.0",
             "rationale": "Low participation suggests uneven engagement and potential communication issues.",
             "cue": "low_participation",
             "message": "Participation seems low — consider inviting quieter members.",
@@ -46,7 +44,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "dominance_critical_threshold",
             "rule_category": "communication_dynamics",
-            "rule_version": "1.0",
             "rationale": "High dominance suppresses team voice and reduces psychological safety.",
             "cue": "dominant_voice",
             "message": "One voice may be dominating — rebalance the discussion.",
@@ -58,7 +55,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "dominance_emerging_pattern",
             "rule_category": "communication_dynamics",
-            "rule_version": "1.0",
             "rationale": "Emerging dominance patterns should be corrected early to maintain balance.",
             "cue": "emerging_dominance",
             "message": "A pattern of dominance is emerging — consider redirecting.",
@@ -73,7 +69,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "blocker_critical_age",
             "rule_category": "blockers",
-            "rule_version": "1.0",
             "rationale": "Long-standing blockers indicate stalled progress and require escalation.",
             "cue": "critical_blocker",
             "message": "A blocker has been unresolved for 5+ days — escalate immediately.",
@@ -85,7 +80,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "blocker_stale_age",
             "rule_category": "blockers",
-            "rule_version": "1.0",
             "rationale": "Stale blockers slow down delivery and should be addressed proactively.",
             "cue": "stale_blocker",
             "message": "A blocker is lingering — check if support is needed.",
@@ -100,7 +94,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "blocker_missing_owner",
             "rule_category": "blockers",
-            "rule_version": "1.0",
             "rationale": "Blockers without owners cannot be resolved and require immediate assignment.",
             "cue": "missing_blocker_owner",
             "message": "A blocker has no owner — assign responsibility.",
@@ -116,7 +109,6 @@ def apply_rules(state: dict):
             interventions.append({
                 "rule_name": "daily_overrun",
                 "rule_category": "ceremony",
-                "rule_version": "1.0",
                 "rationale": "Daily Scrum should remain timeboxed; overruns reduce focus.",
                 "cue": "daily_overrun",
                 "message": "Daily is running long — consider parking discussions.",
@@ -129,7 +121,6 @@ def apply_rules(state: dict):
             interventions.append({
                 "rule_name": "retro_low_engagement",
                 "rule_category": "ceremony",
-                "rule_version": "1.0",
                 "rationale": "Retrospectives require high engagement to be effective.",
                 "cue": "retro_silence",
                 "message": "Retro engagement is low — try a structured activity.",
@@ -142,7 +133,6 @@ def apply_rules(state: dict):
             interventions.append({
                 "rule_name": "planning_blocker_carryover",
                 "rule_category": "ceremony",
-                "rule_version": "1.0",
                 "rationale": "Active blockers may affect sprint commitments and should be reviewed.",
                 "cue": "planning_blocker_carryover",
                 "message": "A blocker may affect sprint planning — address before committing.",
@@ -157,7 +147,6 @@ def apply_rules(state: dict):
         interventions.append({
             "rule_name": "psychological_safety_risk",
             "rule_category": "combined_signals",
-            "rule_version": "1.0",
             "rationale": "Low participation + dominance indicates psychological safety issues.",
             "cue": "team_silence_plus_dominance",
             "message": "Low participation + dominance detected — rebalance the conversation.",

@@ -16,7 +16,6 @@ if not os.path.exists(LOG_PATH):
             "explanation",
             "rule_name",
             "rule_category",
-            "rule_version",
             "rationale",
             "raw_json"
         ])
@@ -34,7 +33,6 @@ def log_intervention(intervention: dict, raw_json: str):
             intervention.get("explanation"),
             intervention.get("rule_name"),
             intervention.get("rule_category"),
-            intervention.get("rule_version"),
             intervention.get("rationale"),
             raw_json
         ])
