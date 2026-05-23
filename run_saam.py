@@ -2,6 +2,11 @@ import os
 import subprocess
 import sys
 import time
+from db.db_models import init_db
+
+# Create tables on startup
+init_db()
+
 
 def check_venv():
     venv_python = os.path.join("venv", "Scripts", "python.exe")
