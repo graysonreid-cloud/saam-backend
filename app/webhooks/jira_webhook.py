@@ -42,12 +42,6 @@ async def jira_webhook(request: Request):
         # 3. Evaluate rules
         # ---------------------------------------------------------
         decision = evaluate_team_state(saam_state)
-        print("Webhook hit")
-        print("Webhook hit")
-        print("Webhook hit")
-        print("Webhook hit")
-        print("Webhook hit")
-        print("Webhook hit")
 
         # ---------------------------------------------------------
         # 4. Close DB session

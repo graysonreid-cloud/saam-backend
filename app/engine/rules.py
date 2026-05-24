@@ -5,12 +5,13 @@ def apply_rules(state: dict):
     def get(key, default=None):
         return state.get(key, default)
 
+    # Extract standup-relevant signals
     participation = get("participation", 0)
     talk_time_imbalance = get("talk_time_imbalance", 0)
     blocker_age_days = get("blocker_age_days", 0)
     blocker_owner_missing = get("blocker_owner_missing", False)
-    ceremony = (get("ceremony") or "").lower()
     time_remaining = get("time_remaining", 999)
+    missing_updates = get("missing_updates", False)
 
     # ---------------------------------------------------------
     # 1. PARTICIPATION HEALTH
@@ -102,46 +103,49 @@ def apply_rules(state: dict):
         })
 
     # ---------------------------------------------------------
-    # 5. CEREMONY-SPECIFIC RULES
+    # 5. CRITICAL: BLOCKER UNOWNED + AGED
     # ---------------------------------------------------------
-    if ceremony == "daily":
-        if time_remaining < 2:
-            interventions.append({
-                "rule_name": "daily_overrun",
-                "rule_category": "ceremony",
-                "rationale": "Daily Scrum should remain timeboxed; overruns reduce focus.",
-                "cue": "daily_overrun",
-                "message": "Daily is running long — consider parking discussions.",
-                "explanation": "Time remaining is under 2 minutes in a Daily Scrum.",
-                "priority": 4
-            })
-
-    if ceremony == "retro":
-        if participation < 0.4:
-            interventions.append({
-                "rule_name": "retro_low_engagement",
-                "rule_category": "ceremony",
-                "rationale": "Retrospectives require high engagement to be effective.",
-                "cue": "retro_silence",
-                "message": "Retro engagement is low — try a structured activity.",
-                "explanation": "Participation is below 40% during a retrospective.",
-                "priority": 5
-            })
-
-    if ceremony == "planning":
-        if blocker_age_days > 0:
-            interventions.append({
-                "rule_name": "planning_blocker_carryover",
-                "rule_category": "ceremony",
-                "rationale": "Active blockers may affect sprint commitments and should be reviewed.",
-                "cue": "planning_blocker_carryover",
-                "message": "A blocker may affect sprint planning — address before committing.",
-                "explanation": "Planning ceremony detected with active blockers.",
-                "priority": 4
-            })
+    if blocker_owner_missing and blocker_age_days >= 5:
+        interventions.append({
+            "rule_name": "blocker_unowned_and_aged",
+            "rule_category": "blockers",
+            "rationale": "An old, unowned blocker is a critical flow risk requiring immediate escalation.",
+            "cue": "blocker_unowned_aged",
+            "message": "A blocker is old and unowned — escalate immediately.",
+            "explanation": "Blocker age exceeded 5 days and no owner is assigned.",
+            "priority": 7
+        })
 
     # ---------------------------------------------------------
-    # 6. TEAM HEALTH SIGNALS (COMBINED)
+    # 6. TIME PRESSURE (Standup Timebox)
+    # ---------------------------------------------------------
+    if time_remaining < 2:
+        interventions.append({
+            "rule_name": "standup_time_pressure",
+            "rule_category": "ceremony",
+            "rationale": "Standups should remain timeboxed; overruns reduce focus and flow.",
+            "cue": "time_pressure",
+            "message": "Time is nearly up — consider parking remaining discussions.",
+            "explanation": f"Only {time_remaining} minutes left in the standup.",
+            "priority": 2
+        })
+
+    # ---------------------------------------------------------
+    # 7. REPORTING GAPS (Yesterday/Today/Blockers)
+    # ---------------------------------------------------------
+    if missing_updates:
+        interventions.append({
+            "rule_name": "standup_reporting_gap",
+            "rule_category": "ceremony",
+            "rationale": "Missing updates reduce transparency and hinder flow-based decision-making.",
+            "cue": "reporting_gap",
+            "message": "Some team members did not provide full updates.",
+            "explanation": "Missing yesterday/today/blockers updates.",
+            "priority": 3
+        })
+
+    # ---------------------------------------------------------
+    # 8. TEAM HEALTH SIGNALS (COMBINED)
     # ---------------------------------------------------------
     if participation < 0.3 and talk_time_imbalance > 0.7:
         interventions.append({
@@ -151,7 +155,7 @@ def apply_rules(state: dict):
             "cue": "team_silence_plus_dominance",
             "message": "Low participation + dominance detected — rebalance the conversation.",
             "explanation": "Combined signals indicate psychological safety issues.",
-            "priority": 7
+            "priority": 8
         })
 
     return interventions
