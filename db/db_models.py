@@ -8,6 +8,8 @@ from sqlalchemy import (
     DateTime,
     JSON,
     ForeignKey,
+    Integer,
+    Float,
 )
 from sqlalchemy.orm import relationship
 
@@ -31,6 +33,7 @@ class Request(Base):
     response_logs = relationship("ResponseLog", back_populates="request", cascade="all, delete-orphan")
     lifecycle_events = relationship("RequestLifecycle", back_populates="request", cascade="all, delete-orphan")
     jira_links = relationship("JiraLink", back_populates="request", cascade="all, delete-orphan")
+    # FIXED: removed invalid relationship to MemberBehaviour
 
 
 # -------------------------------------------------------------------
@@ -122,6 +125,8 @@ class TeamMember(Base):
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
 
+    behaviour_records = relationship("MemberBehaviour", back_populates="team_member")
+
 
 class TeamMemberExternalIdentity(Base):
     __tablename__ = "team_member_external_identities"
@@ -129,10 +134,40 @@ class TeamMemberExternalIdentity(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
     team_member_id = Column(String, ForeignKey("team_members.id"), nullable=False)
-    source = Column(String, nullable=False)  # "jira", "teams", "git", etc.
+    source = Column(String, nullable=False)
     external_id = Column(String, nullable=False, index=True)
 
     team_member = relationship("TeamMember", back_populates="external_identities")
+
+
+# -------------------------------------------------------------------
+# MemberBehaviour (per-member behavioural metrics)
+# -------------------------------------------------------------------
+
+class MemberBehaviour(Base):
+    __tablename__ = "member_behaviour"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    request_id = Column(String, nullable=False)  # no FK
+
+    team_member_id = Column(String, ForeignKey("team_members.id"), nullable=True)
+
+    actions = Column(Integer, nullable=False)
+    responses = Column(Integer, nullable=False)
+    issues = Column(Integer, nullable=False)
+    avg_blocker_age = Column(Float, nullable=False)
+    interaction_load = Column(Float, nullable=False)
+
+    participation_norm = Column(Float, nullable=False)
+    blocker_norm = Column(Float, nullable=False)
+    interaction_norm = Column(Float, nullable=False)
+
+    triggered_rules = Column(JSON, nullable=True)
+
+    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+
+    team_member = relationship("TeamMember", back_populates="behaviour_records")
 
 
 # -------------------------------------------------------------------

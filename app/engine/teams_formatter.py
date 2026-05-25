@@ -1,51 +1,87 @@
-def build_teams_message(decision: dict) -> str:
+def build_teams_message(best: dict) -> str:
     """
-    Builds a polished, standup‑specific Teams message for SAAM,
-    including confidence interpretation and team health score.
+    Builds a clean, human‑readable Teams message for SAAM interventions.
+    Handles both single‑cue and multi‑cue composite rules.
     """
 
-    message = decision.get("message", "")
-    cue = decision.get("cue", "")
-    explanation = decision.get("explanation", "")
-    priority = decision.get("priority")
-    confidence = decision.get("confidence")
-    health = decision.get("team_health")
+    rule_name = best.get("rule_name", "")
+    message = best.get("message", "")
+    explanation = best.get("explanation", "")
+    priority = best.get("priority", "")
+    confidence = best.get("confidence", 0)
+    team_health = best.get("team_health", 0)
+    standup_reasoning = best.get("standup_reasoning", "")
 
-    # Priority → severity label
-    if priority is not None:
-        if priority >= 7:
-            severity = "Critical"
-        elif priority >= 5:
-            severity = "High"
-        elif priority >= 3:
-            severity = "Moderate"
-        else:
-            severity = "Low"
+    # ---------------------------------------------------------
+    # 1. HEADER
+    # ---------------------------------------------------------
+    header = "**SAAM Intervention**"
+
+    # ---------------------------------------------------------
+    # 2. CUE / SIGNAL SECTION
+    # ---------------------------------------------------------
+    if rule_name == "multi_cue_composite":
+        # Human‑friendly composite header
+        cue_section = "**Multiple issues detected**"
+
+        # List contributing rule messages (not rule names)
+        contributing = best.get("contributing_rules", [])
+        if contributing:
+            cue_section += "\n" + "\n".join(f"- {msg}" for msg in contributing)
+
     else:
-        severity = "Info"
+        # Normal single‑cue rule
+        cue = best.get("cue", "")
+        cue_section = f"**Signal detected:** {cue}"
 
-    # Confidence → natural language
-    if confidence is not None:
-        if confidence >= 0.8:
-            confidence_text = "SAAM is highly confident in this assessment."
-        elif confidence >= 0.6:
-            confidence_text = "SAAM is moderately confident in this assessment."
-        else:
-            confidence_text = "SAAM has low confidence in this assessment."
+    # ---------------------------------------------------------
+    # 3. MAIN MESSAGE
+    # ---------------------------------------------------------
+    main_message = f"**Intervention:** {message}"
+
+    # ---------------------------------------------------------
+    # 4. EXPLANATION
+    # ---------------------------------------------------------
+    explanation_section = f"**Reasoning Summary:**\n{explanation}"
+
+    # ---------------------------------------------------------
+    # 5. STANDUP REASONING (behavioural interpretation)
+    # ---------------------------------------------------------
+    if standup_reasoning:
+        reasoning_section = f"**Behavioural Interpretation:**\n{standup_reasoning}"
     else:
-        confidence_text = "Confidence unavailable."
+        reasoning_section = ""
 
-    # Build final Teams message
-    teams_message = (
-        f"**Standup Insight — {severity} Priority**\n\n"
-        f"{message}\n\n"
-        f"**Why this matters:** {explanation}\n\n"
-        f"**Signal detected:** `{cue}`\n\n"
-        f"**Confidence:** {confidence_text}\n"
+    # ---------------------------------------------------------
+    # 6. CONFIDENCE + TEAM HEALTH
+    # ---------------------------------------------------------
+    confidence_pct = int(confidence * 100)
+    health_pct = int(team_health)
+
+    meta_section = (
+        f"**Confidence:** {confidence_pct}%\n"
+        f"**Team Health:** {health_pct}/100"
     )
 
-    # Add health score cleanly
-    if health is not None:
-        teams_message += f"\n\n**Team Health Score:** {health}%\n"
+    # ---------------------------------------------------------
+    # 7. PRIORITY
+    # ---------------------------------------------------------
+    priority_section = f"**Priority:** {priority}"
 
-    return teams_message
+    # ---------------------------------------------------------
+    # 8. FINAL ASSEMBLY
+    # ---------------------------------------------------------
+    parts = [
+        header,
+        cue_section,
+        main_message,
+        explanation_section,
+        reasoning_section,
+        meta_section,
+        priority_section
+    ]
+
+    # Remove empty blocks
+    parts = [p for p in parts if p.strip()]
+
+    return "\n\n".join(parts)

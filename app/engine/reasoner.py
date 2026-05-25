@@ -52,7 +52,7 @@ def build_standup_reasoning(decisions: list, best: dict) -> dict:
         behavioural_pattern = (
             "Low participation combined with dominance suggests a psychological safety risk."
         )
-    elif "critical_blocker" in cues or "blocker_unowned_aged" in cues:
+    elif "blocker_unowned_aged" in cues or "critical_blocker" in cues:
         behavioural_pattern = (
             "A critical blocker is affecting flow and requires immediate attention."
         )

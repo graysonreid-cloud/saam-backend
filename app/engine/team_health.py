@@ -10,7 +10,7 @@ def calculate_team_health(state: dict) -> int:
     missing_updates = state.get("missing_updates", False)
 
     # 1. Participation (weight: 35%)
-    participation_score = participation  # already normalised
+    participation_score = participation
 
     # 2. Talk-time balance (weight: 25%)
     imbalance_score = 1 - min(imbalance, 1)
