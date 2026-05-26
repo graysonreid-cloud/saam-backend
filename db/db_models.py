@@ -2,18 +2,12 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Column,
-    String,
-    Boolean,
-    DateTime,
-    JSON,
-    ForeignKey,
-    Integer,
-    Float,
+    Column, String, Boolean, DateTime, JSON,
+    ForeignKey, Integer, Float
 )
 from sqlalchemy.orm import relationship
 
-from .database import Base, engine
+from db.base import Base
 
 
 # -------------------------------------------------------------------
@@ -29,11 +23,11 @@ class Request(Base):
     source = Column(String, nullable=False)
     payload = Column(JSON, nullable=False)
 
+    # Relationships
     action_logs = relationship("ActionLog", back_populates="request", cascade="all, delete-orphan")
     response_logs = relationship("ResponseLog", back_populates="request", cascade="all, delete-orphan")
     lifecycle_events = relationship("RequestLifecycle", back_populates="request", cascade="all, delete-orphan")
     jira_links = relationship("JiraLink", back_populates="request", cascade="all, delete-orphan")
-    # FIXED: removed invalid relationship to MemberBehaviour
 
 
 # -------------------------------------------------------------------
@@ -84,7 +78,7 @@ class RequestLifecycle(Base):
 
 
 # -------------------------------------------------------------------
-# JiraLink (link SAAM request → Jira issue)
+# JiraLink (SAAM request → Jira issue)
 # -------------------------------------------------------------------
 
 class JiraLink(Base):
@@ -108,9 +102,11 @@ class TeamMember(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
+    # Optional direct external IDs (legacy fields)
     external_id_jira = Column(String, unique=True, index=True, nullable=True)
     external_id_teams = Column(String, unique=True, index=True, nullable=True)
 
+    # Flexible identity mappings
     external_identities = relationship(
         "TeamMemberExternalIdentity",
         back_populates="team_member",
@@ -119,7 +115,6 @@ class TeamMember(Base):
 
     display_name = Column(String, nullable=False)
     email = Column(String, nullable=True)
-
     role = Column(String, nullable=True)
     active = Column(Boolean, default=True)
 
@@ -128,20 +123,24 @@ class TeamMember(Base):
     behaviour_records = relationship("MemberBehaviour", back_populates="team_member")
 
 
+# -------------------------------------------------------------------
+# TeamMemberExternalIdentity (multi‑source identity mapping)
+# -------------------------------------------------------------------
+
 class TeamMemberExternalIdentity(Base):
     __tablename__ = "team_member_external_identities"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
     team_member_id = Column(String, ForeignKey("team_members.id"), nullable=False)
-    source = Column(String, nullable=False)
+    source = Column(String, nullable=False)          # e.g., "jira", "teams", "slack"
     external_id = Column(String, nullable=False, index=True)
 
     team_member = relationship("TeamMember", back_populates="external_identities")
 
 
 # -------------------------------------------------------------------
-# MemberBehaviour (per-member behavioural metrics)
+# MemberBehaviour (per‑member behavioural metrics)
 # -------------------------------------------------------------------
 
 class MemberBehaviour(Base):
@@ -149,16 +148,17 @@ class MemberBehaviour(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    request_id = Column(String, nullable=False)  # no FK
-
+    request_id = Column(String, nullable=False)
     team_member_id = Column(String, ForeignKey("team_members.id"), nullable=True)
 
+    # Raw behavioural metrics
     actions = Column(Integer, nullable=False)
     responses = Column(Integer, nullable=False)
     issues = Column(Integer, nullable=False)
     avg_blocker_age = Column(Float, nullable=False)
     interaction_load = Column(Float, nullable=False)
 
+    # Normalised metrics
     participation_norm = Column(Float, nullable=False)
     blocker_norm = Column(Float, nullable=False)
     interaction_norm = Column(Float, nullable=False)
@@ -168,11 +168,3 @@ class MemberBehaviour(Base):
     timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, index=True)
 
     team_member = relationship("TeamMember", back_populates="behaviour_records")
-
-
-# -------------------------------------------------------------------
-# Create all tables
-# -------------------------------------------------------------------
-
-def init_db():
-    Base.metadata.create_all(bind=engine)

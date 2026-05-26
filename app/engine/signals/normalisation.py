@@ -1,4 +1,8 @@
 def clamp(value: float, min_val: float = 0.0, max_val: float = 1.0) -> float:
+    """
+    Map a numeric value into a fixed range.
+    Falls back to 0.0 if the input is invalid.
+    """
     try:
         value = float(value)
     except (TypeError, ValueError):
@@ -7,6 +11,10 @@ def clamp(value: float, min_val: float = 0.0, max_val: float = 1.0) -> float:
 
 
 def normalise_blocker_age(days) -> float:
+    """
+    Convert blocker age (days) into a 0–1 severity scale.
+    Older blockers → higher severity.
+    """
     try:
         days = int(days)
     except (TypeError, ValueError):
@@ -24,6 +32,10 @@ def normalise_blocker_age(days) -> float:
 
 
 def normalise_time_remaining(minutes) -> float:
+    """
+    Convert remaining standup time into urgency (0–1).
+    Less time → higher urgency.
+    """
     try:
         minutes = int(minutes)
     except (TypeError, ValueError):
@@ -33,10 +45,15 @@ def normalise_time_remaining(minutes) -> float:
         return 1.0
     if minutes >= 10:
         return 0.0
+
     return clamp((10 - minutes) / 10)
 
 
 def normalise_state(state: dict) -> dict:
+    """
+    Produce a normalised view of the team state.
+    All values are scaled to 0–1 for rule evaluation.
+    """
     normalised = dict(state)
 
     normalised["participation_norm"] = clamp(state.get("participation", 0))

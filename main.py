@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-# Load environment variables 
+# Load environment variables
 load_dotenv()
 
 # ---------------------------------------------------------
@@ -13,17 +13,15 @@ app = FastAPI(title="SAAM Backend")
 # ---------------------------------------------------------
 # Routers & Integrations
 # ---------------------------------------------------------
-from app.test_endpoints.jira_test import router as jira_test_router
 from app.integrations.jira_client import fetch_jira_issue
 from app.integrations.jira.mapping import map_jira_to_saam
 from app.engine.evaluator import evaluate_team_state
 
-# ⭐ NEW: Identity‑resolution webhook router
-from app.webhooks.jira_webhook import router as jira_router
+# Jira webhook router
+from app.api.webhooks.jira_webhook import router as jira_router
 
 # Register routers
-app.include_router(jira_test_router, prefix="/test")
-app.include_router(jira_router) 
+app.include_router(jira_router)
 
 # ---------------------------------------------------------
 # Models
@@ -64,7 +62,7 @@ def evaluate_with_jira(payload: dict):
             issue_key=issue_key,
             base_url=jira_config.get("base_url"),
             username=jira_config.get("username"),
-            api_token=jira_config.get("api_token")
+            api_token=jira_config.get("api_token"),
         )
 
     state = payload.get("state", {})
@@ -93,7 +91,7 @@ async def jira_webhook(payload: dict):
         return {
             "status": "ok",
             "saam_state": saam_state,
-            "decision": decision
+            "decision": decision,
         }
 
     except Exception as e:

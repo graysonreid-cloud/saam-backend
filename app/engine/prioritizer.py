@@ -1,5 +1,8 @@
 from typing import List, Dict, Any
 
+HIGH_PRIORITY_THRESHOLD = 4
+
+
 def choose_best_intervention(candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not candidates:
         return {
@@ -15,38 +18,27 @@ def choose_best_intervention(candidates: List[Dict[str, Any]]) -> Dict[str, Any]
         }
 
     # Sort by priority (highest first)
-    sorted_candidates = sorted(candidates, key=lambda x: x["priority"], reverse=True)
+    sorted_candidates = sorted(candidates, key=lambda c: c["priority"], reverse=True)
 
-    # Take all cues above a threshold (e.g. priority >= 4)
-    HIGH_PRIORITY_THRESHOLD = 4
-    high_priority = [c for c in sorted_candidates if c["priority"] >= HIGH_PRIORITY_THRESHOLD]
+    # High‑priority cues
+    high = [c for c in sorted_candidates if c["priority"] >= HIGH_PRIORITY_THRESHOLD]
 
-    # If only one high‑priority cue, just return it
-    if len(high_priority) <= 1:
+    # Single high‑priority cue → return directly
+    if len(high) <= 1:
         best = sorted_candidates[0]
         best["contributing_rules"] = [best["rule_name"]]
         return best
 
-    # Multi‑cue composite intervention
-    combined_priority = max(c["priority"] for c in high_priority)
-
-    combined_message = "Multiple issues detected:\n" + "\n".join(
-        f"- {c['message']}" for c in high_priority
-    )
-
-    combined_explanation = "This intervention combines several high‑priority signals:\n" + "\n".join(
-        f"- [{c['rule_name']}] {c['explanation']}" for c in high_priority
-    )
-
+    # Multi‑cue composite
     return {
         "rule_name": "multi_cue_composite",
         "rule_category": "combined_signals",
         "rationale": "When several high-priority cues fire together, SAAM surfaces a composite intervention.",
         "cue": "multi_cue",
-        "message": combined_message,
-        "explanation": combined_explanation,
-        "priority": combined_priority,
-        "contributing_rules": [c["rule_name"] for c in high_priority],
+        "priority": max(c["priority"] for c in high),
+        "message": "Multiple issues detected:\n" + "\n".join(f"- {c['message']}" for c in high),
+        "explanation": "This intervention combines several high‑priority signals:\n"
+                       + "\n".join(f"- [{c['rule_name']}] {c['explanation']}" for c in high),
+        "contributing_rules": [c["rule_name"] for c in high],
         "reasoning_trace": []
     }
-

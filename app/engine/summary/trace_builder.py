@@ -1,17 +1,19 @@
 def build_trace(decisions: list[dict], state: dict) -> list[dict]:
     """
-    Trace Builder v2:
-    - captures rule metadata
-    - captures normalised signals
-    - captures rule category
-    - captures composite rule contributors
-    - captures signal severity
-    - captures evaluator ordering
+    Trace Builder v2.
+    Produces a structured, step‑by‑step reasoning trace for explainability.
+    Captures:
+    - rule metadata
+    - normalised signals
+    - rule category
+    - composite contributors
+    - signal severity snapshot
+    - evaluation order
     """
 
     trace = []
 
-    # Extract normalised signals once
+    # Extract normalised signals once (shared across all entries)
     normalised = {
         "participation_norm": state.get("participation_norm"),
         "imbalance_norm": state.get("imbalance_norm"),
@@ -22,18 +24,20 @@ def build_trace(decisions: list[dict], state: dict) -> list[dict]:
 
     for index, d in enumerate(decisions):
         entry = {
-            "order": index + 1,
+            "order": index + 1,                     # evaluation order
             "rule_name": d.get("rule_name"),
             "rule_category": d.get("rule_category"),
             "cue": d.get("cue"),
             "priority": d.get("priority"),
             "message": d.get("message"),
             "explanation": d.get("explanation"),
+
+            # Shared normalised signals + raw state snapshot
             "normalised_signals": normalised,
             "trigger_values": state,
         }
 
-        # Composite rule contributors
+        # Composite rule contributors (if applicable)
         if d.get("rule_name") == "multi_cue_composite":
             entry["contributing_rules"] = d.get("contributing_rules", [])
 

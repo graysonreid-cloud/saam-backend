@@ -1,0 +1,59 @@
+* [33mcommit 14112b35c79662c942b68d4dbce9c2d49ef15837[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Tue May 26 07:33:33 2026 +0100
+[31m|[m 
+[31m|[m     MVP complete: integrated standup rules, confidence engine, team health scoring, summary builder, trace, evaluator cleanup
+[31m|[m 
+* [33mcommit dcfa4123eddb63b1570548eef2ca61c146b84388[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Mon May 25 13:05:08 2026 +0100
+[31m|[m 
+[31m|[m     Fix: Jira assignee identity resolution + actor/assignee separation
+[31m|[m 
+* [33mcommit 1dee3f5db21c4e995fef0a0b62779ca855122a33[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Sun May 24 13:18:41 2026 +0100
+[31m|[m 
+[31m|[m     Add confidence, team health score, and updated Teams formatter
+[31m|[m 
+* [33mcommit e37974dc16d93b26df095054b9afbb0e9fbaac12[m[33m ([m[1;33mtag: [m[1;33mv0.3.0[m[33m)[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Sat May 23 12:42:13 2026 +0100
+[31m|[m 
+[31m|[m     Fix UUID schema mismatch, rebuild DB models, stabilize Jira webhook, add identity resolution prints
+[31m|[m 
+* [33mcommit 663b4c87dc1d2931261be21896682b325f6cc04b[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Sat May 23 10:00:32 2026 +0100
+[31m|[m 
+[31m|[m     Update code for startup scripts and rules engine
+[31m|[m 
+* [33mcommit d3b47146da6d4cf8569d438f80298f32929ce4c5[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Fri May 22 15:01:48 2026 +0100
+[31m|[m 
+[31m|[m     updated for Jira webhooks
+[31m|[m 
+* [33mcommit 1d09c04b2b48f806e18af8912cb8adfbba39310a[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Fri May 22 14:07:30 2026 +0100
+[31m|[m 
+[31m|[m     Add Jira webhook endpoint, mapping, evaluator integration
+[31m|[m 
+* [33mcommit 77417ddf460abf5cbf1a79fa3c3d182c0701839c[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Fri May 22 12:30:10 2026 +0100
+[31m|[m 
+[31m|[m     Update code
+[31m|[m 
+* [33mcommit fc643fd36eedb68c086fffa06bf52302abb90e11[m
+[31m|[m Author: Grayson <graysonreid@gmail.com>
+[31m|[m Date:   Fri May 22 11:57:18 2026 +0100
+[31m|[m 
+[31m|[m     Remove hardcoded Jira token and use environment variables
+[31m|[m 
+* [33mcommit 662b4c6b347a28e73d78a836e1f5308d9b7b9587[m
+  Author: Grayson <graysonreid@gmail.com>
+  Date:   Fri May 22 10:59:53 2026 +0100
+  
+      Initial SAAM backend import
