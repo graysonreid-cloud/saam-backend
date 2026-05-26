@@ -4,13 +4,15 @@ import uuid
 from app.engine.rules import apply_rules
 from app.engine.prioritizer import choose_best_intervention
 from app.engine.teams_formatter import build_teams_message
-from app.saam_logger.logger import log_intervention
 from app.engine.trace_builder import build_trace
 from app.engine.confidence import calculate_confidence
 from app.engine.reasoner import build_standup_reasoning
 from app.engine.team_health import calculate_team_health
 from app.engine.normalisation import normalise_state
 from app.engine.summary_builder import build_decision_summary
+from app.rules.standup_rules import standup_rules
+from app.saam_logger.logger import log_intervention
+
 
 from db.database import SessionLocal
 from db.db_models import MemberBehaviour
@@ -48,6 +50,7 @@ def evaluate_team_state(state):
         or "issue_event_type_name" in state
     ):
         return {
+            "request_id": state.get("request_id"),
             "final_decision": None,
             "all_decisions": [],
             "decision_count": 0,
@@ -96,10 +99,19 @@ def evaluate_team_state(state):
     core_candidates = apply_rules(state)
     member_candidates = member_rules(state)
 
-    candidates = core_candidates + member_candidates
+    # ---------------------------------------------------------
+    # 4.5 APPLY CEREMONY‑SPECIFIC RULES (STANDUP)
+    # ---------------------------------------------------------
+    ceremony_candidates = []
+    if state.get("ceremony") == "standup":
+        ceremony_candidates = standup_rules(state)
+
+    # Combine all rule outputs
+    candidates = core_candidates + member_candidates + ceremony_candidates
 
     if not candidates:
         return {
+            "request_id": state.get("request_id"),
             "final_decision": None,
             "all_decisions": [],
             "decision_count": 0,
@@ -153,14 +165,16 @@ def evaluate_team_state(state):
     trace = build_trace(candidates, state)
 
     # ---------------------------------------------------------
-    # 12. SUMMARY BUILDER v2
+    # 12. SUMMARY BUILDER v2 (FINAL, CLEAN)
     # ---------------------------------------------------------
     summary = build_decision_summary(
-        best=best,
         decisions=candidates,
-        state=state,
+        best=best,
+        team_state=state,
         confidence=confidence,
         team_health=team_health,
+        teams_message=best.get("teams_message"),
+        standup_reasoning=standup_reasoning,
         trace=trace
     )
 
