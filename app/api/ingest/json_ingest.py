@@ -7,6 +7,9 @@ from app.services.jira_ingest import process_jira_issue
 
 router = APIRouter()
 
+
+## file not used yet, but will be used in the future to ingest JSON dumps of Jira issues
+## enabling historical analysis, model training, and offline testing.
 @router.post("/ingest/json")
 async def ingest_json_dump(file: UploadFile = File(...)):
     """
