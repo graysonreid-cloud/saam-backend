@@ -20,6 +20,16 @@ SessionLocal = sessionmaker(
     bind=engine,
 )
 
+def get_db():
+    """
+    FastAPI dependency that provides a database session.
+    Yields a session and ensures it is closed after use.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def init_db():
     """

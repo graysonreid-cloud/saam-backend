@@ -1,0 +1,20 @@
+{
+  "issues": [
+    {
+      "id": "10001",
+      "key": "TEST-1",
+      "fields": {
+        "summary": "Test issue",
+        "status": { "name": "To Do" },
+        "issuetype": { "name": "Task" },
+        "priority": { "name": "Medium" }
+      },
+      "user": {
+        "accountId": "abc123",
+        "displayName": "Test User",
+        "emailAddress": "test@example.com"
+      },
+      "webhookEvent": "jira:issue_updated"
+    }
+  ]
+}

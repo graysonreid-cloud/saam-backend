@@ -1,27 +1,39 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI
 from dotenv import load_dotenv
 from pydantic import BaseModel
+from db.db_models import TeamMemberInteraction
+from app.services.synthetic_sprint import generate_synthetic_sprint
+from db.database import SessionLocal
 
-# Load environment variables
+# Load environment variables early
 load_dotenv()
 
-# ---------------------------------------------------------
-# FastAPI app
-# ---------------------------------------------------------
+
 app = FastAPI(title="SAAM Backend")
 
-# ---------------------------------------------------------
-# Routers & Integrations
-# ---------------------------------------------------------
+from app.api.webhooks.jira_webhook import router as jira_router
+app.include_router(jira_router, prefix="/webhook")
+
 from app.integrations.jira_client import fetch_jira_issue
-from app.integrations.jira.mapping import map_jira_to_saam
 from app.engine.evaluator import evaluate_team_state
 
-# Jira webhook router
-from app.api.webhooks.jira_webhook import router as jira_router
+from app.api.ingest.json_ingest import router as json_ingest_router
+app.include_router(json_ingest_router)
 
-# Register routers
-app.include_router(jira_router)
+from app.api.saam_output import router as saam_output_router
+app.include_router(saam_output_router)
+
+from app.api.perceptron_train import router as perceptron_train_router
+app.include_router(perceptron_train_router)
+
+from app.api.saam_dashboard import router as saam_dashboard_router
+app.include_router(saam_dashboard_router)
+
+from app.api.model_inspection import router as model_inspection_router
+app.include_router(model_inspection_router)
+
+from app.api.training_template import router as training_template_router
+app.include_router(training_template_router)
 
 # ---------------------------------------------------------
 # Models
@@ -33,6 +45,18 @@ class TeamState(BaseModel):
     blocker_owner_missing: bool
     ceremony: str
     time_remaining: int
+
+
+@app.on_event("startup")
+def populate_if_empty():
+    db = SessionLocal()
+    count = db.query(TeamMemberInteraction).count()
+
+    if count == 0:
+        print("SAAM: Empty DB detected — generating synthetic sprint...")
+        generate_synthetic_sprint(db)
+    else:
+        print("SAAM: Existing data detected — skipping synthetic sprint.")
 
 # ---------------------------------------------------------
 # Health Check
@@ -58,42 +82,9 @@ def evaluate_with_jira(payload: dict):
 
     jira_data = None
     if issue_key and jira_config:
-        jira_data = fetch_jira_issue(
-            issue_key=issue_key,
-            base_url=jira_config.get("base_url"),
-            username=jira_config.get("username"),
-            api_token=jira_config.get("api_token"),
-        )
+        jira_data = fetch_jira_issue(issue_key)
 
     state = payload.get("state", {})
     state["jira"] = jira_data
 
     return evaluate_team_state(state)
-
-# ---------------------------------------------------------
-# Legacy Jira Webhook (kept for compatibility)
-# ---------------------------------------------------------
-@app.post("/webhooks/jira")
-async def jira_webhook(payload: dict):
-    print("Webhook payload received:", payload)
-
-    issue = payload.get("issue")
-    if not issue:
-        return {"error": "Missing issue"}
-
-    try:
-        saam_state = map_jira_to_saam(issue)
-        print("Mapped SAAM state:", saam_state)
-
-        decision = evaluate_team_state(saam_state)
-        print("SAAM decision:", decision)
-
-        return {
-            "status": "ok",
-            "saam_state": saam_state,
-            "decision": decision,
-        }
-
-    except Exception as e:
-        print("WEBHOOK ERROR:", e)
-        return {"error": str(e)}

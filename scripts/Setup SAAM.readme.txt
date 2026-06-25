@@ -1,0 +1,16 @@
+Setup SAAM
+
+    (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& c:\grayson\saam\venv\Scripts\Activate.ps1)
+
+    pip install -r requirements.txt
+
+    python .\scripts\run_saam.py
+
+
+
+
+Setup GROK (webhook)
+
+    (Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& c:\grayson\saam\venv\Scripts\Activate.ps1)
+
+    python .\scripts\start_webhook.py
