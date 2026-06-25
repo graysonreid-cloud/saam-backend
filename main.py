@@ -23,9 +23,6 @@ app.include_router(json_ingest_router)
 from app.api.saam_output import router as saam_output_router
 app.include_router(saam_output_router)
 
-from app.api.perceptron_train import router as perceptron_train_router
-app.include_router(perceptron_train_router)
-
 from app.api.saam_dashboard import router as saam_dashboard_router
 app.include_router(saam_dashboard_router)
 
