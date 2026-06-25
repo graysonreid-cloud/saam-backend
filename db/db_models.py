@@ -170,7 +170,6 @@ class MemberBehaviour(Base):
     team_member = relationship("TeamMember", back_populates="behaviour_records")
 
 
-
 # -------------------------------------------------------------------
 # JiraUser (canonical Jira identity)
 # -------------------------------------------------------------------

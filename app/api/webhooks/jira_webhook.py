@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 from sqlalchemy.orm import Session
+import json
 
 from db.database import SessionLocal
 from db.db_models import (
@@ -33,6 +34,10 @@ async def jira_webhook(request: Request):
 
     try:
         payload = await request.json()
+
+        print("\n================ FULL JIRA WEBHOOK PAYLOAD ================")
+        # print(json.dumps(payload, indent=2))
+        print("===========================================================\n")
 
         # -----------------------------------------------------
         # 1. Log raw request
@@ -201,6 +206,7 @@ async def jira_webhook(request: Request):
                 timestamp=datetime.utcnow()
             )
             db.add(interaction)
+
 
         db.commit()
 
