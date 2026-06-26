@@ -1,116 +1,119 @@
-# app/engine/signals.py
+from datetime import datetime, timezone
 
-from unittest import signals
-
-
-def extract_signals_from_event(event_type: str, payload: dict):
+def extract_signals_from_event(event_type: str, payload: dict) -> list:
     """
-    Convert Jira webhook events into SAAM behavioural signals.
-    Returns a list of dicts:
-    [
-        {
-            "type": "comment_created",
-            "weight": 1.0,
-            "metadata": {...}
-        }
-    ]
+    Extract behavioural signals from a Jira webhook event.
+    MVP version: lightweight but produces real, useful signals.
     """
 
     signals = []
+    now = datetime.now(timezone.utc)
 
-    # ---------------------------------------------------------
-    # COMMENT CREATED (Jira Cloud native event)
-    # ---------------------------------------------------------
-    if event_type == "comment_created" and "comment" in payload:
-        comment = payload["comment"]
+    issue = payload.get("issue", {})
+    fields = issue.get("fields", {})
+    comment = payload.get("comment", {})
+    changelog = payload.get("changelog", {})
+    items = changelog.get("items", [])
+
+    # -----------------------------------------------------
+    # 1. Comment signals
+    # -----------------------------------------------------
+    if comment:
+        body = comment.get("body", "") or ""
+        body_lower = body.lower()
+
+        # Basic comment event
         signals.append({
-            "type": "comment_created",
+            "type": "comment",
             "weight": 1.0,
             "metadata": {
-                "body": comment.get("body"),
-                "author": comment.get("author", {}).get("displayName")
+                "length": len(body),
+                "timestamp": now.isoformat()
             }
         })
-        return signals
 
-    # ---------------------------------------------------------
-    # ISSUE CREATED
-    # ---------------------------------------------------------
-    if event_type == "jira:issue_created":
-        issue = payload.get("issue", {})
-        signals.append({
-            "type": "issue_created",
-            "weight": 1.5,
-            "metadata": {
-                "issue_key": issue.get("key"),
-                "summary": issue.get("fields", {}).get("summary")
-            }
-        })
-        return signals
-
-    # ---------------------------------------------------------
-    # ISSUE UPDATED (changelog)
-    # ---------------------------------------------------------
-    if event_type == "jira:issue_updated":
-        changelog = payload.get("changelog", {})
-        items = changelog.get("items", [])
-
-        for item in items:
-            field = item.get("field")
-            from_val = item.get("fromString")
-            to_val = item.get("toString")
-
-            # COMMENT ADDED (via changelog)
-            if field == "comment":
-                signals.append({
-                    "type": "comment_created",
-                    "weight": 1.0,
-                    "metadata": {
-                        "from": from_val,
-                        "to": to_val
-                    }
-                })
-                continue
-
-            # ASSIGNMENT CHANGE
-            if field == "assignee":
-                signals.append({
-                    "type": "assignment_changed",
-                    "weight": 1.2,
-                    "metadata": {
-                        "from": from_val,
-                        "to": to_val
-                    }
-                })
-                continue
-
-            # STATUS TRANSITION
-            if field == "status":
-                weight = 2.0 if to_val and to_val.lower() == "blocked" else 1.0
-                signals.append({
-                    "type": "status_transition",
-                    "weight": weight,
-                    "metadata": {
-                        "from": from_val,
-                        "to": to_val
-                    }
-                })
-                continue
-
-            # GENERIC FIELD EDIT
+        # Help-seeking patterns
+        if any(x in body_lower for x in ["stuck", "blocked", "help", "anyone", "can someone"]):
             signals.append({
-                "type": "field_edited",
-                "weight": 0.5,
+                "type": "help_request",
+                "weight": 1.0,
+                "metadata": {"text": body}
+            })
+
+        # Help-offering patterns
+        if any(x in body_lower for x in ["i can take", "i'll take", "i can help", "let me help"]):
+            signals.append({
+                "type": "help_offer",
+                "weight": 1.0,
+                "metadata": {"text": body}
+            })
+
+    # -----------------------------------------------------
+    # 2. Status change signals
+    # -----------------------------------------------------
+    for item in items:
+        if item.get("field") == "status":
+            signals.append({
+                "type": "status_change",
+                "weight": 1.0,
                 "metadata": {
-                    "field": field,
-                    "from": from_val,
-                    "to": to_val
+                    "from": item.get("fromString"),
+                    "to": item.get("toString")
                 }
             })
 
-        return signals
+    # -----------------------------------------------------
+    # 3. Assignee change signals
+    # -----------------------------------------------------
+    for item in items:
+        if item.get("field") == "assignee":
+            signals.append({
+                "type": "assignee_change",
+                "weight": 1.0,
+                "metadata": {
+                    "from": item.get("fromString"),
+                    "to": item.get("toString")
+                }
+            })
 
-    # ---------------------------------------------------------
-    # DEFAULT: no signals
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # 4. Worklog signals
+    # -----------------------------------------------------
+    if event_type == "worklog_updated":
+        signals.append({
+            "type": "worklog_update",
+            "weight": 0.5,
+            "metadata": {}
+        })
+
+    # -----------------------------------------------------
+    # 5. Blocker signals (Flagged field)
+    # -----------------------------------------------------
+    flagged = fields.get("customfield_10021")
+    if flagged:
+        signals.append({
+            "type": "blocker_flagged",
+            "weight": 1.0,
+            "metadata": {"flagged": True}
+        })
+
+    # -----------------------------------------------------
+    # 6. Issue created / updated timestamps
+    # -----------------------------------------------------
+    created = fields.get("created")
+    if created:
+        signals.append({
+            "type": "issue_created",
+            "weight": 0.2,
+            "metadata": {"created": created}
+        })
+
+    updated = fields.get("updated")
+    if updated:
+        signals.append({
+            "type": "issue_updated",
+            "weight": 0.1,
+            "metadata": {"updated": updated}
+        })
+
     return signals

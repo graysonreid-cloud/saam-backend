@@ -2,7 +2,6 @@ import sys
 import os
 import time
 
-
 # Ensure project root is on PYTHONPATH
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -16,25 +15,34 @@ import uvicorn
 
 def run_backend():
     """
-    Starts the SAAM backend.
-    Assumes the user has already activated the correct virtual environment.
-    No venv path checks are performed.
+    Starts the SAAM backend in single‑worker mode.
+    No reload, no duplicate processes.
     """
-    print("Starting SAAM backend with command: uvicorn main:app --reload")
-    print("*** Don't forget to start ngrok with: start_webhook.py ***")
+    print("\n========================================")
+    print("        Starting SAAM Backend")
+    print("========================================")
+    print("Uvicorn command: uvicorn main:app")
+    print("Ngrok: run start_webhook.py in another terminal")
+    print("========================================\n")
 
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=False,     # <-- IMPORTANT: prevents double execution
+        workers=1         # <-- ensures only one worker handles webhooks
+    )
 
 
 if __name__ == "__main__":
-    # Initialize DB
+    # Initialize DB once
     try:
         init_db()
         print("Database initialized successfully.")
     except Exception as e:
         print(f"Database initialization failed: {e}")
 
-    time.sleep(0.5)
+    time.sleep(0.3)
 
     # Start backend
     run_backend()

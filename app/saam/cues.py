@@ -1,33 +1,23 @@
 # app/saam/cues.py
+from app.engine.risk import compute_risk_score
 
 def extract_cues(raw: dict) -> dict:
     """
-    Convert raw behavioural stats into SAAM cue values.
-    This is the foundation for the trained model.
+    Convert raw behavioural stats + sprint context into SAAM cue values.
     """
 
-    # 1. Participation level (0–1)
+    # -----------------------------------------------------
+    # EXISTING 12 CUES
+    # -----------------------------------------------------
+
     participation_level = raw.get("participation_level", 0)
-
-    # 2. Talktime imbalance (0–1)
     talktime_imbalance = raw.get("talktime_imbalance", 0)
-
-    # 3. Blocker age (days)
     blocker_age = raw.get("blocker_age", 0)
-
-    # 4. Missing updates (0 or 1)
     missing_updates = 1 if raw.get("missing_updates", False) else 0
-
-    # 5. Blocker owner missing (0 or 1)
     blocker_owner_missing = 1 if raw.get("blocker_owner_missing", False) else 0
-
-    # 6. Time remaining in sprint (days)
     time_remaining = raw.get("time_remaining", 0)
-
-    # 7. Goal changes (count)
     goal_changes = raw.get("goal_changes", 0)
 
-    # 8. Ceremony type (categorical → encoded)
     ceremony_map = {
         "standup": 0,
         "planning": 1,
@@ -36,19 +26,12 @@ def extract_cues(raw: dict) -> dict:
     }
     ceremony_type_encoded = ceremony_map.get(raw.get("ceremony_type", "standup"), 0)
 
-    # 9. Sentiment score (-1 to +1)
     sentiment_score = raw.get("sentiment_score", 0)
-
-    # 10. Workload ratio (0–2)
     workload_ratio = raw.get("workload_ratio", 1)
-
-    # 11. Help requests (count)
     help_requests = raw.get("help_requests", 0)
-
-    # 12. Help offers (count)
     help_offers = raw.get("help_offers", 0)
 
-    return {
+    cues = {
         "participation_level": participation_level,
         "talktime_imbalance": talktime_imbalance,
         "blocker_age": blocker_age,
@@ -62,3 +45,17 @@ def extract_cues(raw: dict) -> dict:
         "help_requests": help_requests,
         "help_offers": help_offers
     }
+
+    # -----------------------------------------------------
+    # NEW: SPRINT CONTEXT CUES
+    # -----------------------------------------------------
+
+    sprint = raw.get("sprint_context", {})
+
+    cues["days_remaining"] = sprint.get("days_remaining")
+    cues["sprint_progress"] = sprint.get("sprint_progress")
+    cues["issue_age_days"] = sprint.get("issue_age_days")
+    cues["time_in_status_days"] = sprint.get("time_in_status_days")
+    cues["risk_score"] = compute_risk_score(cues)
+    
+    return cues

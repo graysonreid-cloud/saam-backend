@@ -32,6 +32,12 @@ app.include_router(model_inspection_router)
 from app.api.training_template import router as training_template_router
 app.include_router(training_template_router)
 
+from app.api.team_summary import router as team_summary_router
+app.include_router(team_summary_router, prefix="/api")
+
+from app.api.risk_trend import router as risk_trend_router
+app.include_router(risk_trend_router, prefix="/api")
+
 # ---------------------------------------------------------
 # Models
 # ---------------------------------------------------------

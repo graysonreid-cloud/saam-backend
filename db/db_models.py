@@ -236,6 +236,45 @@ class JiraEvent(Base):
 
     issue = relationship("JiraIssue", back_populates="events")
 
+    def to_dict(self):
+        """
+        Convert JiraEvent ORM object into a clean dictionary for the SAAM Jira adapter.
+        """
+
+        payload_issue = self.raw_payload.get("issue", {})
+        fields = payload_issue.get("fields", {})
+
+        # Issue key
+        issue_key = payload_issue.get("key") or (self.issue.issue_key if self.issue else None)
+
+        # Blocker detection (labels)
+        labels = fields.get("labels", []) or []
+        is_blocker = "blocker" in labels
+
+        # Assignee accountId
+        assignee = fields.get("assignee") or {}
+        assignee_id = assignee.get("accountId")
+
+        # Actor / triggered_by user
+        user_display = None
+        if self.triggered_by:
+            user_display = self.triggered_by.display_name
+
+        # Team comment count
+        comment_data = fields.get("comment", {})
+        team_comment_count = comment_data.get("total", 0)
+
+        return {
+            "id": self.id,
+            "issue_key": issue_key,
+            "event_type": self.event_type,
+            "created_at": self.timestamp,
+            "is_blocker": is_blocker,
+            "assignee": assignee_id,
+            "user": user_display,
+            "team_comment_count": team_comment_count,
+            "team_issue_count": 1  # placeholder until team-level stats added
+        }
 
 # -------------------------------------------------------------------
 # TeamMemberInteraction (behavioural signals per event)
