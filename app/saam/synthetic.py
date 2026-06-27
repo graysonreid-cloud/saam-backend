@@ -2,8 +2,10 @@
 
 import random
 import numpy as np
+
 from app.saam.cues import extract_cues
 from app.saam.features import build_feature_vector
+
 
 def generate_persona_cues(persona: str) -> dict:
     """
@@ -23,7 +25,7 @@ def generate_persona_cues(persona: str) -> dict:
             "sentiment_score": random.uniform(0.2, 0.8),
             "workload_ratio": random.uniform(0.8, 1.2),
             "help_requests": random.randint(0, 1),
-            "help_offers": random.randint(1, 3)
+            "help_offers": random.randint(1, 3),
         }
 
     if persona == "silent":
@@ -39,7 +41,7 @@ def generate_persona_cues(persona: str) -> dict:
             "sentiment_score": random.uniform(-0.2, 0.2),
             "workload_ratio": random.uniform(0.8, 1.0),
             "help_requests": 0,
-            "help_offers": 0
+            "help_offers": 0,
         }
 
     if persona == "blocked":
@@ -55,29 +57,35 @@ def generate_persona_cues(persona: str) -> dict:
             "sentiment_score": random.uniform(-0.6, -0.1),
             "workload_ratio": random.uniform(1.2, 1.8),
             "help_requests": random.randint(1, 4),
-            "help_offers": 0
+            "help_offers": 0,
         }
 
     raise ValueError(f"Unknown persona: {persona}")
 
 
-def generate_training_dataset(n_per_persona=200):
+def generate_training_dataset(n_per_persona: int = 200):
     """
-    Generate a full synthetic training dataset for healthy, silent, blocked.
-    Returns X (feature vectors) and y (labels).
+    Generate a full synthetic training dataset for:
+    - healthy
+    - silent
+    - blocked
+
+    Returns:
+        X: numpy array of feature vectors
+        y: numpy array of labels
     """
 
     personas = ["healthy", "silent", "blocked"]
     label_map = {"silent": 0, "healthy": 1, "blocked": 2}
 
-    X = []
-    y = []
+    X, y = [], []
 
     for persona in personas:
         for _ in range(n_per_persona):
             raw = generate_persona_cues(persona)
             cues = extract_cues(raw)
             vector = build_feature_vector(cues)
+
             X.append(vector[0])
             y.append(label_map[persona])
 

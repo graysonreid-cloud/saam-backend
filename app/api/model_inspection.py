@@ -1,30 +1,39 @@
 from fastapi import APIRouter
-from app.engine.perceptron_predict import load_model
+import joblib
+
+from app.saam.features import FEATURE_ORDER
 
 router = APIRouter()
+
+# Load model once for performance
+MODEL_PATH = "models/perceptron.pkl"
+MODEL = joblib.load(MODEL_PATH)["model"]
+
 
 @router.get("/saam/model")
 def inspect_model():
     """
     Returns perceptron weights, bias, and feature importance.
-    Helps explain how SAAM makes decisions.
+    Provides full transparency into SAAM's decision boundary.
     """
-    model = load_model()
 
-    weights = model.coef_[0].tolist()
-    bias = float(model.intercept_[0])
+    # Extract model parameters
+    weights = MODEL.coef_[0].tolist()
+    bias = float(MODEL.intercept_[0])
 
-    features = ["comments", "assignments", "transitions"]
+    # Map weights to actual SAAM feature names
     feature_importance = {
-        feature: weight for feature, weight in zip(features, weights)
+        feature: round(weight, 6)
+        for feature, weight in zip(FEATURE_ORDER, weights)
     }
 
     return {
         "model_type": "Perceptron",
+        "feature_order": FEATURE_ORDER,
         "weights": feature_importance,
         "bias": bias,
         "decision_rule": (
-            "label = 1 (healthy) if dot(weights, features) + bias > 0 "
-            "else 0 (low_collaboration)"
+            "label = argmax( dot(weights, features) + bias ) "
+            "where 0=silent, 1=healthy, 2=blocked"
         )
     }

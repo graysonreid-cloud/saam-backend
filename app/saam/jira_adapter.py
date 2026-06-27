@@ -1,13 +1,16 @@
 from datetime import datetime, timezone
 
+
 def jira_to_stats(events: list[dict]) -> dict:
     """
     Convert raw Jira events into behavioural stats.
     MVP version with time-based behavioural metrics.
     """
 
+    now = datetime.now(timezone.utc)
+
     stats = {
-        "event_count": 0,
+        "event_count": len(events),
         "comment_count": 0,
         "total_comment_length": 0,
         "avg_comment_length": 0,
@@ -31,29 +34,29 @@ def jira_to_stats(events: list[dict]) -> dict:
         "time_since_last_assignment_days": None,
     }
 
-    now = datetime.now(timezone.utc)
-
     # -----------------------------------------------------
-    # 1. Basic event counts
-    # -----------------------------------------------------
-    stats["event_count"] = len(events)
-
-    # -----------------------------------------------------
-    # 2. Process events
+    # 1. Process events
     # -----------------------------------------------------
     for ev in events:
-        ts = ev.get("timestamp")
-        if ts:
-            ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        ts_raw = ev.get("timestamp")
+        ts = None
 
-            # Last event
-            if not stats["last_event_ts"] or ts > stats["last_event_ts"]:
-                stats["last_event_ts"] = ts
+        if ts_raw:
+            try:
+                ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+            except ValueError:
+                ts = None
 
+        # Track last event timestamp
+        if ts and (stats["last_event_ts"] is None or ts > stats["last_event_ts"]):
+            stats["last_event_ts"] = ts
+
+        # -------------------------------------------------
         # Comment events
+        # -------------------------------------------------
         comment = ev.get("raw_payload", {}).get("comment")
         if comment:
-            body = comment.get("body", "") or ""
+            body = comment.get("body") or ""
             stats["comment_count"] += 1
             stats["total_comment_length"] += len(body)
 
@@ -70,22 +73,28 @@ def jira_to_stats(events: list[dict]) -> dict:
             if any(x in text for x in ["i can take", "i'll take", "i can help", "let me help"]):
                 stats["help_offers"] += 1
 
+        # -------------------------------------------------
         # Status change
+        # -------------------------------------------------
         if ev.get("signal_type") == "status_change" and ts:
             stats["last_status_change_ts"] = ts
 
+        # -------------------------------------------------
         # Assignment change
+        # -------------------------------------------------
         if ev.get("signal_type") == "assignee_change" and ts:
             stats["last_assignment_ts"] = ts
 
     # -----------------------------------------------------
-    # 3. Averages
+    # 2. Averages
     # -----------------------------------------------------
     if stats["comment_count"] > 0:
-        stats["avg_comment_length"] = stats["total_comment_length"] / stats["comment_count"]
+        stats["avg_comment_length"] = (
+            stats["total_comment_length"] / stats["comment_count"]
+        )
 
     # -----------------------------------------------------
-    # 4. Time-based metrics
+    # 3. Time-based metrics
     # -----------------------------------------------------
     def days_since(dt):
         if not dt:
@@ -98,15 +107,14 @@ def jira_to_stats(events: list[dict]) -> dict:
     stats["time_since_last_assignment_days"] = days_since(stats["last_assignment_ts"])
 
     # -----------------------------------------------------
-    # 5. Missing updates (improved)
+    # 4. Missing updates
     # -----------------------------------------------------
     if stats["time_since_last_event_days"] is not None:
         stats["missing_updates"] = stats["time_since_last_event_days"] >= 3
 
     # -----------------------------------------------------
-    # 6. Participation level (improved)
+    # 5. Participation level
     # -----------------------------------------------------
-    # Decay participation if no recent events
     if stats["time_since_last_event_days"] is not None:
         recency_factor = max(1 - (stats["time_since_last_event_days"] / 14), 0)
     else:
@@ -118,13 +126,13 @@ def jira_to_stats(events: list[dict]) -> dict:
     )
 
     # -----------------------------------------------------
-    # 7. Talktime imbalance (improved)
+    # 6. Talktime imbalance
     # -----------------------------------------------------
     if stats["avg_comment_length"] > 0:
         stats["talktime_imbalance"] = min(stats["avg_comment_length"] / 300, 1.0)
 
     # -----------------------------------------------------
-    # 8. Workload ratio (unchanged MVP)
+    # 7. Workload ratio
     # -----------------------------------------------------
     assigned = [
         ev for ev in events
@@ -134,7 +142,7 @@ def jira_to_stats(events: list[dict]) -> dict:
     stats["team_issues"] = len({ev.get("issue_id") for ev in events})
 
     if stats["team_issues"] > 0:
-        team_avg = stats["team_issues"] / 5
+        team_avg = stats["team_issues"] / 5  # MVP assumption
         stats["workload_ratio"] = stats["issues_assigned"] / max(team_avg, 1)
 
     return stats

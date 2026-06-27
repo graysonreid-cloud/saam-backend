@@ -3,12 +3,8 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
-from db.db_models import (
-    TeamMember,
-    TeamMemberInteraction,
-    JiraEvent,
-    JiraUser
-)
+from db.db_models import TeamMember, TeamMemberInteraction
+
 
 def compute_daily_team_summary(db: Session):
     """
@@ -16,18 +12,19 @@ def compute_daily_team_summary(db: Session):
     - risk scores
     - participation
     - sentiment
-    - sprint context
     """
 
     now = datetime.now(timezone.utc)
     since = now - timedelta(hours=24)
 
     # -----------------------------------------
-    # 1. Fetch all interactions in last 24 hours
+    # 1. Fetch interactions in last 24 hours
     # -----------------------------------------
-    interactions = db.query(TeamMemberInteraction).filter(
-        TeamMemberInteraction.timestamp >= since
-    ).all()
+    interactions = (
+        db.query(TeamMemberInteraction)
+        .filter(TeamMemberInteraction.timestamp >= since)
+        .all()
+    )
 
     if not interactions:
         return {
@@ -42,6 +39,12 @@ def compute_daily_team_summary(db: Session):
     # -----------------------------------------
     member_data = {}
 
+    # Preload all team members once (avoid repeated DB hits)
+    team_members = {
+        tm.id: tm.display_name
+        for tm in db.query(TeamMember).all()
+    }
+
     for inter in interactions:
         tm_id = inter.team_member_id
 
@@ -49,29 +52,24 @@ def compute_daily_team_summary(db: Session):
             member_data[tm_id] = {
                 "risk_scores": [],
                 "sentiments": [],
-                "participation": [],
-                "display_name": None
+                "participation": 0,
+                "display_name": team_members.get(tm_id, "Unknown")
             }
 
-        # Get display name
-        if not member_data[tm_id]["display_name"]:
-            tm = db.query(TeamMember).filter_by(id=tm_id).first()
-            if tm:
-                member_data[tm_id]["display_name"] = tm.display_name
-
-        # Extract risk score from metadata if present
         meta = inter.event_metadata or {}
+
+        # Risk score
         risk = meta.get("risk_score")
         if risk is not None:
             member_data[tm_id]["risk_scores"].append(risk)
 
-        # Extract sentiment if present
-        sentiment = meta.get("sentiment")
+        # Sentiment (your logs use "sentiment_estimate")
+        sentiment = meta.get("sentiment_estimate")
         if sentiment is not None:
             member_data[tm_id]["sentiments"].append(sentiment)
 
-        # Participation proxy: count interactions
-        member_data[tm_id]["participation"].append(1)
+        # Participation proxy
+        member_data[tm_id]["participation"] += 1
 
     # -----------------------------------------
     # 3. Compute per-member aggregates
@@ -79,24 +77,18 @@ def compute_daily_team_summary(db: Session):
     members_summary = []
 
     for tm_id, data in member_data.items():
-        risk_avg = (
-            sum(data["risk_scores"]) / len(data["risk_scores"])
-            if data["risk_scores"] else 0
-        )
+        risk_scores = data["risk_scores"]
+        sentiments = data["sentiments"]
 
-        sentiment_avg = (
-            sum(data["sentiments"]) / len(data["sentiments"])
-            if data["sentiments"] else 0
-        )
-
-        participation = len(data["participation"])
+        risk_avg = sum(risk_scores) / len(risk_scores) if risk_scores else 0
+        sentiment_avg = sum(sentiments) / len(sentiments) if sentiments else 0
 
         members_summary.append({
             "team_member_id": tm_id,
             "display_name": data["display_name"],
             "risk_avg": round(risk_avg, 3),
             "sentiment_avg": round(sentiment_avg, 3),
-            "participation_count": participation
+            "participation_count": data["participation"]
         })
 
     # -----------------------------------------

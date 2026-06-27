@@ -3,6 +3,7 @@
 from collections import defaultdict
 from statistics import mean
 
+
 def intervention_effectiveness(records: list):
     """
     Compute sentiment outcomes grouped by intervention type.
@@ -11,8 +12,12 @@ def intervention_effectiveness(records: list):
     buckets = defaultdict(list)
 
     for r in records:
-        intervention = r["intervention_type"]
-        sentiment = r["sentiment"]
+        intervention = r.get("intervention_type")
+        sentiment = r.get("sentiment_estimate")
+
+        if intervention is None or sentiment is None:
+            continue
+
         buckets[intervention].append(sentiment)
 
     table = []

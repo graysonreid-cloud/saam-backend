@@ -1,49 +1,52 @@
-# app/saam/train.py
+from fastapi import APIRouter
+from pydantic import BaseModel
+from typing import List, Dict, Any
 
-import joblib
-from sklearn.linear_model import Perceptron
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
+from app.engine.perceptron_train import train_perceptron
+from app.saam.features import FEATURE_ORDER
 
-from .synthetic import generate_training_dataset
+router = APIRouter()
 
-MODEL_PATH = "models/perceptron.pkl"
+class TrainingRow(BaseModel):
+    user_id: str
+    features: Dict[str, Any]   # must match FEATURE_ORDER
+    label: int                 # 0 = silent, 1 = healthy, 2 = blocked
 
-def train_saam_model(n_per_persona=200):
+class TrainingPayload(BaseModel):
+    data: List[TrainingRow]
+
+@router.post("/saam/train")
+def train_perceptron_endpoint(payload: TrainingPayload):
     """
-    Train the multi-class SAAM model using synthetic cue-based data.
+    Retrains the perceptron model using the provided dataset.
+    Expects:
+      - features in FEATURE_ORDER
+      - labels: 0=silent, 1=healthy, 2=blocked
     """
 
-    # 1. Generate dataset
-    X, y = generate_training_dataset(n_per_persona=n_per_persona)
+    dataset = []
 
-    # 2. Build training pipeline (scaler + perceptron)
-    pipeline = Pipeline([
-        ("scaler", StandardScaler()),
-        ("clf", Perceptron(max_iter=1000, tol=1e-3))
-    ])
+    for row in payload.data:
+        # Validate feature completeness
+        missing = [f for f in FEATURE_ORDER if f not in row.features]
+        if missing:
+            return {
+                "status": "error",
+                "message": f"Missing features: {missing}"
+            }
 
-    # 3. Train model
-    pipeline.fit(X, y)
+        dataset.append({
+            "user_id": row.user_id,
+            "features": [row.features[f] for f in FEATURE_ORDER],
+            "label": row.label
+        })
 
-    # 4. Save model + metadata
-    joblib.dump({
-        "model": pipeline,
-        "version": "1.1-multiclass-cues",
-        "feature_order": [
-            "participation_level",
-            "talktime_imbalance",
-            "blocker_age",
-            "missing_updates",
-            "blocker_owner_missing",
-            "time_remaining",
-            "goal_changes",
-            "ceremony_type_encoded",
-            "sentiment_score",
-            "workload_ratio",
-            "help_requests",
-            "help_offers"
-        ]
-    }, MODEL_PATH)
+    # Train model using the correct function
+    train_perceptron(dataset)
 
-    return pipeline
+    return {
+        "status": "ok",
+        "message": "Perceptron model retrained.",
+        "feature_order": FEATURE_ORDER,
+        "count": len(dataset)
+    }

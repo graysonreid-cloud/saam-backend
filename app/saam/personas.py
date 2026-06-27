@@ -2,21 +2,22 @@
 
 import random
 
-def silent_persona_reply(saam_message: str) -> str:
+
+def silent_persona_reply(_: str) -> str:
     """
-    Silent persona gives minimal, vague, or non-committal replies.
+    Silent persona gives minimal, vague, or non‑committal replies.
     """
     options = [
         "Not much to add.",
         "All good here.",
         "No updates.",
         "Nothing from me.",
-        "I'm fine."
+        "I'm fine.",
     ]
     return random.choice(options)
 
 
-def healthy_persona_reply(saam_message: str) -> str:
+def healthy_persona_reply(_: str) -> str:
     """
     Healthy persona is positive, collaborative, and responsive.
     """
@@ -25,12 +26,12 @@ def healthy_persona_reply(saam_message: str) -> str:
         "Great, I’ll keep the momentum going.",
         "All good, making steady progress.",
         "Appreciate the support!",
-        "No blockers — moving forward nicely."
+        "No blockers — moving forward nicely.",
     ]
     return random.choice(options)
 
 
-def blocked_persona_reply(saam_message: str) -> str:
+def blocked_persona_reply(_: str) -> str:
     """
     Blocked persona expresses frustration, stress, or overwhelm.
     """
@@ -39,6 +40,6 @@ def blocked_persona_reply(saam_message: str) -> str:
         "Still blocked — waiting on someone to help.",
         "This is getting frustrating.",
         "I can't move forward until this is resolved.",
-        "Honestly, it's been a rough sprint."
+        "Honestly, it's been a rough sprint.",
     ]
     return random.choice(options)

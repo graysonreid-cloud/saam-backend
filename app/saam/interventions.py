@@ -7,7 +7,7 @@ INTERVENTION_MATRIX = {
         "message": (
             "I noticed you’ve been quieter than usual. "
             "Would you like to share any updates or blockers?"
-        )
+        ),
     },
 
     "healthy": {
@@ -16,17 +16,17 @@ INTERVENTION_MATRIX = {
         "message": (
             "Great engagement and steady progress. "
             "Keep up the good collaboration."
-        )
+        ),
     },
 
     "blocked": {
-        "type": "hard",
+        "type": "escalate",   # corrected from "hard"
         "action": "escalate_blocker",
         "message": (
             "I see a blocker that has been open for a while. "
             "Let’s address it together or escalate if needed."
-        )
-    }
+        ),
+    },
 }
 
 
@@ -40,7 +40,6 @@ def select_intervention(label: str, cues: dict) -> dict:
     """
 
     risk = cues.get("risk_score", 0)
-    days_remaining = cues.get("days_remaining")
     sprint_progress = cues.get("sprint_progress")
 
     # ---------------------------------------------------------
@@ -53,7 +52,7 @@ def select_intervention(label: str, cues: dict) -> dict:
             "message": (
                 "This issue shows several risk indicators. "
                 "It may need attention."
-            )
+            ),
         }
 
     # ---------------------------------------------------------
@@ -66,7 +65,7 @@ def select_intervention(label: str, cues: dict) -> dict:
             "message": (
                 "There are some signs of risk. "
                 "Could you share an update when possible?"
-            )
+            ),
         }
 
     # ---------------------------------------------------------
@@ -90,5 +89,5 @@ def select_intervention(label: str, cues: dict) -> dict:
     return {
         "type": base["type"],
         "action": base["action"],
-        "message": message
+        "message": message,
     }

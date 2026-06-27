@@ -2,6 +2,7 @@
 
 from .analysis import load_logs, analyse_logs
 
+
 def compare_personas(log_files: dict):
     """
     Compare multiple personas using their experiment log files.
@@ -19,16 +20,24 @@ def compare_personas(log_files: dict):
         records = load_logs(filename)
         summary = analyse_logs(records)
 
+        rounds = summary.get("rounds", 0) or 1  # avoid division by zero
+        labels = summary.get("label_distribution", {})
+        interventions = summary.get("intervention_distribution", {})
+
         comparison.append({
             "Persona": persona,
-            "Rounds": summary["rounds"],
-            "Avg Sentiment": round(summary["avg_sentiment"], 3),
-            "Silent %": round(summary["label_distribution"]["silent"] / summary["rounds"], 2),
-            "Healthy %": round(summary["label_distribution"]["healthy"] / summary["rounds"], 2),
-            "Blocked %": round(summary["label_distribution"]["blocked"] / summary["rounds"], 2),
-            "Soft %": round(summary["intervention_distribution"]["soft"] / summary["rounds"], 2),
-            "Hard %": round(summary["intervention_distribution"]["hard"] / summary["rounds"], 2),
-            "None %": round(summary["intervention_distribution"]["none"] / summary["rounds"], 2),
+            "Rounds": summary.get("rounds", 0),
+            "Avg Sentiment": round(summary.get("avg_sentiment", 0), 3),
+
+            # Label distribution
+            "Silent %": round(labels.get("silent", 0) / rounds, 2),
+            "Healthy %": round(labels.get("healthy", 0) / rounds, 2),
+            "Blocked %": round(labels.get("blocked", 0) / rounds, 2),
+
+            # Intervention distribution (corrected categories)
+            "Soft %": round(interventions.get("soft", 0) / rounds, 2),
+            "Escalate %": round(interventions.get("escalate", 0) / rounds, 2),
+            "None %": round(interventions.get("none", 0) / rounds, 2),
         })
 
     return comparison

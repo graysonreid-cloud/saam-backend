@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Request
 from sqlalchemy.orm import Session
 import json
+import joblib
+import uuid
+from datetime import datetime, timezone
 
 from db.database import SessionLocal
 from db.db_models import (
@@ -12,43 +15,32 @@ from db.db_models import (
 
 from app.engine.signals import extract_signals_from_event
 
-# SAAM ENGINE
+# SAAM ENGINE (modern)
 from app.saam.jira_adapter import jira_to_stats
 from app.saam.cues import extract_cues
 from app.saam.features import build_feature_vector
-from app.saam.actions import select_action
+from app.saam.interventions import select_intervention
 from app.saam.interaction import sentiment_score
 from app.saam.message_templates import apply_sprint_context_prefix
 from app.saam.logging import log_interaction
 
 
-import joblib
-import uuid
-from datetime import datetime, timezone
-
 router = APIRouter()
+
+# Load model once (performance fix)
+MODEL = joblib.load("models/perceptron.pkl")["model"]
 
 
 # ---------------------------------------------------------
 # Helper: Jira datetime parser
 # ---------------------------------------------------------
 def parse_jira_datetime(dt_str: str):
-    """
-    Jira returns timestamps like:
-    - 2025-01-12T09:00:00.000+0000
-    - 2025-01-12T09:00:00.000Z
-
-    Python requires:
-    - +00:00 instead of +0000
-    """
     if not dt_str:
         return None
 
-    # Convert +0000 → +00:00
     if dt_str.endswith("+0000"):
         dt_str = dt_str[:-5] + "+00:00"
 
-    # Convert Z → +00:00
     dt_str = dt_str.replace("Z", "+00:00")
 
     return datetime.fromisoformat(dt_str)
@@ -57,7 +49,6 @@ def parse_jira_datetime(dt_str: str):
 # ---------------------------------------------------------
 # Webhook endpoint
 # ---------------------------------------------------------
-
 @router.post("/jira")
 async def jira_webhook(request: Request):
     db: Session = SessionLocal()
@@ -75,16 +66,12 @@ async def jira_webhook(request: Request):
 
         if "comment" in payload:
             print("Detected comment event")
-
         elif any(item.get("field") == "assignee" for item in items):
             print("Detected assignee change")
-
         elif any(item.get("field") == "status" for item in items):
             print("Detected status change")
-
         elif event_type == "worklog_updated":
             print("Detected worklog update")
-
         else:
             print(f"Ignoring non-behavioural event: {event_type}")
             return {"status": "ignored_event"}
@@ -236,7 +223,7 @@ async def jira_webhook(request: Request):
         stats = jira_to_stats(jira_dicts)
 
         # -----------------------------------------------------
-        # SPRINT CONTEXT EXTRACTION (fixed)
+        # Sprint context extraction
         # -----------------------------------------------------
         try:
             sprint_data = issue_fields.get("customfield_10020", [])
@@ -277,30 +264,20 @@ async def jira_webhook(request: Request):
             print("Sprint context extraction failed:", e)
 
         # -----------------------------------------------------
-        # 8. SAAM ENGINE
+        # 9. SAAM ENGINE (modern)
         # -----------------------------------------------------
 
-        # Extract cues (now includes risk_score)
         cues = extract_cues(stats)
-
-        # Build feature vector
         X = build_feature_vector(cues)
 
-        # Predict behavioural label
-        model = joblib.load("models/perceptron.pkl")["model"]
-        pred = model.predict(X)[0]
+        pred = MODEL.predict(X)[0]
         label_map = {0: "silent", 1: "healthy", 2: "blocked"}
-        predicted_label = label_map[pred]
+        predicted_label = label_map.get(pred, "healthy")
 
-        # Select intervention (risk-aware)
-        action = select_action(predicted_label, cues)
-
-        # Sprint-aware prefix
+        action = select_intervention(predicted_label, cues)
         action["message"] = apply_sprint_context_prefix(action["message"], cues)
 
-        # Sentiment estimate
         sentiment = sentiment_score(action["message"])
-
 
         print("\n================ SAAM ENGINE OUTPUT ================")
         print("Team Member ID:", jira_user.team_member_id)
@@ -308,32 +285,30 @@ async def jira_webhook(request: Request):
         print("Predicted Label:", predicted_label)
         print("Cues:", json.dumps(cues, indent=2))
         print("Risk Score:", cues.get("risk_score"))
-        print("Intervention Type:", action["intervention_type"])
+        print("Intervention Type:", action["type"])
         print("Action:", action["action"])
         print("Message:", action["message"])
         print("Sentiment Estimate:", sentiment)
         print("====================================================\n")
 
-        # Correct logging call
         log_interaction({
-            "persona": display_name,
+            "persona": "jira_user",
             "predicted_label": predicted_label,
             "risk_score": cues.get("risk_score"),
-            "intervention_type": action["intervention_type"],
+            "intervention_type": action["type"],
             "action": action["action"],
             "saam_message": action["message"],
+            "sentiment_estimate": sentiment,
             "cues": cues
         })
-        # -----------------------------------------------------
-        # 9. Return SAAM action
-        # -----------------------------------------------------
+
         return {
             "status": "ok",
             "received": True,
             "team_member_id": jira_user.team_member_id,
             "predicted_label": predicted_label,
             "cues": cues,
-            "intervention_type": action["intervention_type"],
+            "intervention_type": action["type"],
             "action": action["action"],
             "message": action["message"],
             "sentiment_estimate": sentiment

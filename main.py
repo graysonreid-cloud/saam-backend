@@ -8,14 +8,13 @@ from db.database import SessionLocal
 # Load environment variables early
 load_dotenv()
 
-
 app = FastAPI(title="SAAM Backend")
 
+# ---------------------------------------------------------
+# Routers
+# ---------------------------------------------------------
 from app.api.webhooks.jira_webhook import router as jira_router
 app.include_router(jira_router, prefix="/webhook")
-
-from app.integrations.jira_client import fetch_jira_issue
-from app.engine.evaluator import evaluate_team_state
 
 from app.api.ingest.json_ingest import router as json_ingest_router
 app.include_router(json_ingest_router)
@@ -42,14 +41,16 @@ app.include_router(risk_trend_router, prefix="/api")
 # Models
 # ---------------------------------------------------------
 class TeamState(BaseModel):
-    participation: float
-    talk_time_imbalance: float
-    blocker_age_days: int
+    participation_level: float
+    talktime_imbalance: float
+    blocker_age: float
     blocker_owner_missing: bool
-    ceremony: str
-    time_remaining: int
+    ceremony_type: str
+    time_remaining: float
 
-
+# ---------------------------------------------------------
+# Startup
+# ---------------------------------------------------------
 @app.on_event("startup")
 def populate_if_empty():
     db = SessionLocal()
@@ -71,21 +72,30 @@ def health():
 # ---------------------------------------------------------
 # Manual Evaluation Endpoint
 # ---------------------------------------------------------
+from app.engine.evaluator import evaluate_team_state
+
 @app.post("/evaluate")
 def evaluate(state: TeamState):
-    return evaluate_team_state(state)
+    return evaluate_team_state(state.dict())
 
 # ---------------------------------------------------------
 # Evaluate with Jira (manual fetch)
 # ---------------------------------------------------------
+from app.integrations.jira_client import fetch_jira_issue
+
 @app.post("/evaluate_with_jira")
 def evaluate_with_jira(payload: dict):
     issue_key = payload.get("issue_key")
-    jira_config = payload.get("jira", {})
+    jira_cfg = payload.get("jira", {})
 
     jira_data = None
-    if issue_key and jira_config:
-        jira_data = fetch_jira_issue(issue_key)
+    if issue_key and jira_cfg:
+        jira_data = fetch_jira_issue(
+            issue_key,
+            jira_cfg.get("base_url"),
+            jira_cfg.get("username"),
+            jira_cfg.get("api_token")
+        )
 
     state = payload.get("state", {})
     state["jira"] = jira_data

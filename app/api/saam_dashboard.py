@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends
-from datetime import datetime
+from sqlalchemy.orm import Session
+from datetime import datetime, timezone
+
 from db.database import get_db
 from app.services.saam_output import build_saam_output
 
 router = APIRouter()
 
 @router.get("/saam/dashboard")
-def saam_dashboard(db=Depends(get_db)):
+def saam_dashboard(db: Session = Depends(get_db)):
     """
     Returns a structured dashboard-style summary of SAAM output.
     Includes:
@@ -15,14 +17,19 @@ def saam_dashboard(db=Depends(get_db)):
       - perceptron label
       - last updated timestamp
     """
+
     data = build_saam_output(db)
 
     dashboard = {
-        "last_updated": datetime.utcnow().isoformat() + "Z",
+        "last_updated": datetime.now(timezone.utc).isoformat(),
         "team_size": len(data),
         "healthy_count": sum(1 for m in data if m["saam_label"] == "healthy"),
-        "low_collaboration_count": sum(1 for m in data if m["saam_label"] == "low_collaboration"),
+        "silent_count": sum(1 for m in data if m["saam_label"] == "silent"),
+        "blocked_count": sum(1 for m in data if m["saam_label"] == "blocked"),
         "members": data
     }
 
-    return dashboard
+    return {
+        "status": "ok",
+        "data": dashboard
+    }
